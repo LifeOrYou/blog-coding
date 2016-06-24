@@ -1,18 +1,11 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package blog.api.controller;
 
 import blog.api.core.AbstractController;
 import blog.api.object.User;
 import blog.api.service.UsersService;
-import blog.api.transformer.JsonTransformer;
 import spark.Request;
 import spark.Response;
 import spark.Route;
-import static spark.Spark.*;
 
 /**
  *
@@ -20,80 +13,49 @@ import static spark.Spark.*;
  */
 public class UsersController extends AbstractController {
     
-    private UsersService service;
+    private static UsersService service;
     
-    public UsersController(UsersService usersService) {
-        this.service = usersService;
-        
-        this.service.create(new User(1, "valentin", "reydy"));
-        this.service.create(new User(2, "nicolas", "tesla"));
-        
-        get("/users", new SelectAllRoute(), new JsonTransformer());
-        get("/users/:id", new SelectByIdRoute(), new JsonTransformer());
-        post("/users", new AddRoute(), new JsonTransformer());
-        put("/users/:id", new UpdateRoute(), new JsonTransformer());
-        delete("/users/:id", new DeleteRoute(), new JsonTransformer());
+    static {
+        service = new UsersService();
     }
     
-    private class SelectAllRoute implements Route {
-        @Override
-        public Object handle(Request rqst, Response rspns) throws Exception {
-            return service.getAll();
-        }
-    }
+    public static Route all = (Request rqst, Response rspns) -> {
+        //LoginController.ensureUserIsLoggedIn(request, response);
+        return service.getAll();
+    };   
     
-    private class SelectByIdRoute implements Route {
-        @Override
-        public Object handle(Request rqst, Response rspns) throws Exception {
-            String id = rqst.params(":id");
-            
-            User user = service.getById(Integer.parseInt(id));
-            
-            if (user == null) {
-                return notFoundProcess(rspns, "No user with id %s found.", id);
-            }
-            
-            return user;
-        }
-    }
+    public static Route byId = (Request rqst, Response rspns) -> {
+        return service.getById(Integer.parseInt(rqst.params(":id")));
+    };
     
-    private class AddRoute implements Route {
-        @Override
-        public Object handle(Request rqst, Response rspns) throws Exception {
-            service.create(
-                    new User(
-                            Integer.parseInt(rqst.queryParams("id")), 
-                            rqst.queryParams("nom"), 
-                            rqst.queryParams("prenom")
-                    )
-            );
-            return null;
-        }
-    }
+    public static Route add = (Request rqst, Response rspns) -> {
+        return service.create(
+                new User(
+                        service.generateId(),
+                        rqst.queryParams("username"),
+                        rqst.queryParams("password"),
+                        rqst.queryParams("email"),
+                        User.Role.valueOf(rqst.queryParams("role").toUpperCase())
+                )
+        );
+    };
     
-    private class UpdateRoute implements Route {
-        @Override
-        public Object handle(Request rqst, Response rspns) throws Exception {
-            service.update(
-                    new User(
-                            Integer.parseInt(rqst.params(":id")),
-                            rqst.queryParams("nom"),
-                            rqst.queryParams("prenom")
-                    )
-            );
-            return null;
-        }
-    }
+    public static Route update = (Request rqst, Response rspns) -> {
+        service.update(
+                new User(
+                        Integer.parseInt(rqst.params(":id")),
+                        rqst.queryParams("username"),
+                        "",
+                        rqst.queryParams("email"),
+                        User.Role.valueOf(rqst.queryParams("role"))
+                )
+        );
+        return null;
+    };
     
-    private class DeleteRoute implements Route {
-        @Override
-        public Object handle(Request rqst, Response rspns) throws Exception {
-            int id = Integer.parseInt(rqst.params(":id"));
-            
-            service.delete(new User(id));
-            
-            return null;
-        }
-    }
+    public static Route delete = (Request rqst, Response rspns) -> {
+        service.delete(Integer.parseInt(rqst.params(":id")));
+        return null;
+    };
     
 }
